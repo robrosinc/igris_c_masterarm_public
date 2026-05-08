@@ -1,0 +1,11 @@
+[workspace]
+name = "igris_c_masterarm"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.10.*"
+clang-format = "18.*"
+cmake-format = "0.6.*"
+pip = ">=25.3,<26"
