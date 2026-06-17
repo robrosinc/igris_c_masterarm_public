@@ -1,0 +1,70 @@
+version: "3"
+
+tasks:
+  activate:
+    cmds:
+    - pixi shell --frozen
+    silent: true
+
+  fmt:
+    cmds:
+    - pixi run --frozen clang-format -i igris_c_masterarm_node.cpp
+    - pixi run --frozen cmake-format -i ./CMakeLists.txt
+
+  # Print the version string this build would carry. Mirrors igris_c_sdk's
+  # get_version.sh — produces PEP 440 strings like `2.0.0`, `2.0.0.dev3+g<hash>`,
+  # or `0.0.0+local` outside a git checkout.
+  version:
+    cmds:
+    - ./tools/get_version.sh
+
+  # Developer setup: build both submodules and stage their outputs at the
+  # paths CMakeLists.txt expects (third_party/igris_c_sdk_public/ and
+  # third_party/MasterArmSDK/). Run once after `git submodule update --init
+  # --recursive`, then `cmake -B build` works as before.
+  deps:
+    cmds:
+    - bash scripts/build_deps.sh
+
+  # Build the SDK public deliverable straight into third_party/igris_c_sdk_public/.
+  # That path is the one CMakeLists.txt expects for local cmake builds AND the
+  # one `public:docker` feeds into the masterarm build via `--build-context
+  # sdk_public=...` — same file, two consumers, no intermediate staging dir.
+  sdk:public:docker:
+    internal: true
+    env:
+      DOCKER_BUILDKIT: "1"
+    cmds:
+    - rm -rf ./third_party/igris_c_sdk_public
+    - mkdir -p ./third_party/igris_c_sdk_public
+    - >-
+      SDK_VERSION="$(third_party/igris_c_sdk/tools/get_version.sh)" &&
+      docker build --target public-artifact
+      --build-arg SDK_VERSION="${SDK_VERSION}"
+      --output type=local,dest=$PWD/third_party/igris_c_sdk_public
+      -f third_party/igris_c_sdk/Dockerfile
+      third_party/igris_c_sdk
+
+  # Build the masterarmsdk binary distribution + assemble the full public
+  # tree into ./artifacts/igris_c_masterarm_public/. Mirrors the Jenkinsfile
+  # publish path so a local run produces the same artefact CI uploads.
+  public:docker:
+    deps: [ sdk:public:docker ]
+    env:
+      DOCKER_BUILDKIT: "1"
+    vars:
+      MASTERARM_VERSION:
+        sh: ./tools/get_version.sh
+    cmds:
+    - mkdir -p ./artifacts/igris_c_masterarm_public
+    - >-
+      docker build --target public-artifact
+      --build-arg MASTERARM_VERSION={{.MASTERARM_VERSION}}
+      --build-context sdk_public=$PWD/third_party/igris_c_sdk_public
+      --output type=local,dest=$PWD/artifacts/igris_c_masterarm_public
+      -f Dockerfile .
+
+  clean:
+    cmds:
+    - rm -rf ./artifacts
+    - rm -rf ./build
