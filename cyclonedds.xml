@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  IGRIS-C MasterArm - CycloneDDS configuration (example)
+
+  Before running the masterarm node/examples, point CYCLONEDDS_URI at this file:
+      export CYCLONEDDS_URI=file://$(pwd)/cyclonedds.xml
+
+  IMPORTANT: set the NetworkInterface "name" below to the interface on THIS
+  machine that reaches the robot (e.g. eth0, enp3s0, wlan0, wlo1).
+    - list interfaces with:  ip link   (or  ifconfig )
+    - or set autodetermine="true" to let CycloneDDS pick the interface itself.
+
+  This file configures ONLY the network interface. The DDS domain id and robot
+  namespace are NOT set here - pass them at launch/run time instead
+  (domain_id:=, namespace:=  ->  ChannelFactory::Init(domain_id, namespace)).
+  The development PC and the robot must use the SAME domain id + namespace.
+-->
+<CycloneDDS>
+    <Domain>
+        <General>
+            <Interfaces>
+                <!-- CHANGE "eth0" to your machine's network interface -->
+                <NetworkInterface name="eth0" autodetermine="false" />
+            </Interfaces>
+        </General>
+    </Domain>
+</CycloneDDS>
